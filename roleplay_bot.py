@@ -2559,6 +2559,18 @@ async def say(
     confirmation = f"✅ Message sent in {target_channel.mention}."
     await interaction.response.send_message(confirmation, ephemeral=True)
 
+@bot.tree.command(name="version", description="Check the current software version of the bot")
+async def version(interaction: discord.Interaction):
+    """Display the bot's software version, codename, and developer"""
+    embed = discord.Embed(
+        title="Software Version",
+        description="**Software:** Lily\n**Version:** 0.1\n**Codename:** Lily\n**Developer:** <@904243741106245704>",
+        color=discord.Color.blurple(),
+        timestamp=datetime.now()
+    )
+    embed.set_footer(text=f"Requested by {interaction.user.name}")
+
+    await interaction.response.send_message(embed=embed)
 
 @bot.event
 async def on_command_error(ctx, error):
@@ -2590,6 +2602,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
                 await interaction.response.send_message("❌ An unexpected error occurred.", ephemeral=True)
         except discord.HTTPException:
             pass
+
+
 
 # Run the bot
 def main():
