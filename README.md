@@ -37,6 +37,7 @@ The bot uses local JSON files for persistent storage.
 
 **`vehicles.json`**[cite: 3]
 Stores user vehicle registries tied to their Discord ID[cite: 3].
+```json
 {
   "user_id": {
     "username": "discord_username",
@@ -54,9 +55,11 @@ Stores user vehicle registries tied to their Discord ID[cite: 3].
     ]
   }
 }
+```
 
 **`loa_requests.json`**[cite: 3]
 Tracks pending and resolved staff leave requests[cite: 3].
+```json
 {
   "a1b2c3d4": {
     "request_id": "a1b2c3d4",
@@ -69,9 +72,11 @@ Tracks pending and resolved staff leave requests[cite: 3].
     "requested_at": "2025-06-01T10:30:00"
   }
 }
+```
 
 **`blacklist.json`**
 Tracks active ban countdowns and saves user roles for restoration.
+```json
 {
   "123456789012345678": {
     "username": "discord_username",
