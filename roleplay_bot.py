@@ -2572,6 +2572,74 @@ async def version(interaction: discord.Interaction):
 
     await interaction.response.send_message(embed=embed)
 
+@bot.tree.command(name="terminate", description="Terminate a staff member and remove their staff roles")
+@require_loa_eligible()
+@app_commands.describe(
+    target="The staff member to terminate",
+    reason="The reason for termination"
+)
+async def terminate(
+    interaction: discord.Interaction, 
+    target: discord.Member, 
+    reason: str
+):
+    """Terminate a staff member by stripping their roles (requires higher role hierarchy)"""
+    await interaction.response.defer()
+
+    # Bypass hierarchy check if the invoker is the server owner
+    if interaction.user.id != interaction.guild.owner_id:
+        # Check if the invoker has a strictly higher top role than the target
+        if interaction.user.top_role.position <= target.top_role.position:
+            await interaction.followup.send("❌ You cannot terminate a staff member who has a role equal to or higher than yours!")
+            return
+    
+    # Identify which staff roles the target currently has based on the LOA list
+    roles_to_remove = [
+        role for role in target.roles 
+        if role.id in LOA_ELIGIBLE_ROLES
+    ]
+
+    if not roles_to_remove:
+        await interaction.followup.send(f"❌ {target.mention} does not have any recognizable staff roles to remove.")
+        return
+
+    # Attempt to remove the roles
+    try:
+        await target.remove_roles(*roles_to_remove, reason=f"Terminated by {interaction.user.name} - Reason: {reason}")
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I do not have permission to remove roles from this user. Ensure my bot role is higher than theirs in the server settings.")
+        return
+    except discord.HTTPException as e:
+        await interaction.followup.send(f"❌ Failed to update roles: {e}")
+        return
+
+    # Notify the terminated user via DM
+    try:
+        dm_embed = discord.Embed(
+            title="🚨 Notice of Termination",
+            color=discord.Color.red(),
+            timestamp=datetime.now()
+        )
+        dm_embed.add_field(name="Reason", value=reason, inline=False)
+        dm_embed.add_field(name="Terminated By", value=interaction.user.name, inline=False)
+        dm_embed.set_footer(text="Your staff roles have been removed.")
+        await target.send(embed=dm_embed)
+    except discord.Forbidden:
+        pass # The user has DMs disabled
+
+    # Post confirmation in the channel
+    confirm_embed = discord.Embed(
+        title="✅ Staff Member Terminated",
+        description=f"Successfully terminated {target.mention}.",
+        color=discord.Color.green(),
+        timestamp=datetime.now()
+    )
+    confirm_embed.add_field(name="Reason", value=reason, inline=False)
+    confirm_embed.add_field(name="Roles Removed", value=str(len(roles_to_remove)), inline=True)
+    confirm_embed.set_footer(text=f"Terminated by {interaction.user.name}")
+
+    await interaction.followup.send(embed=confirm_embed)
+    
 @bot.event
 async def on_command_error(ctx, error):
     """Error handling for prefix commands"""
