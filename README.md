@@ -88,3 +88,7 @@ Tracks active ban countdowns and saves user roles for restoration.
     "ban_timestamp": 1718478000.0,
     "guild_id": 987654321098765432,
     "saved_roles": [111111111, 222222222]
+  }
+}
+```
+*(Additional operational files include `citations.json`, `infractions.json`, `active_sessions.json`, and `supervise_sessions.json` which follow similar key-value mapping structures based on IDs).*
