@@ -6,9 +6,9 @@ To get Lily up and running on your server, please refer to the official **[Setup
 
 ### User & Roleplay Commands
 * `/version`: Displays the current bot software version (Lily v0.1) and developer credits.
-* `/register_vehicle`: Registers a new vehicle requiring year, model, trim, color, plate, state, and owner[cite: 3].
-* `/my_vehicles`: Views all vehicles you have registered[cite: 3].
-* `/remove_vehicle`: Removes a vehicle by its assigned index number[cite: 3].
+* `/register_vehicle`: Registers a new vehicle requiring year, model, trim, color, plate, state, and owner.
+* `/my_vehicles`: Views all vehicles you have registered.
+* `/remove_vehicle`: Removes a vehicle by its assigned index number.
 
 ### Law Enforcement Commands
 * `/issue_citation`: Issues a logged fine to a user and sends them a DM with the citation ID.
@@ -16,16 +16,16 @@ To get Lily up and running on your server, please refer to the official **[Setup
 * `/mark_citation_paid`: Updates a citation's status to paid.
 
 ### Session Management Commands
-* `/start_session`: Starts a roleplay session, asking for AORP and FRP speeds, and notifies users[cite: 3].
+* `/start_session`: Starts a roleplay session, asking for AORP and FRP speeds, and notifies users.
 * `/over` & `/force_end`: Ends active sessions and schedules the channel for a message purge.
 * `/set_peacetime`: Updates the peacetime status (On, Off, Strict) of an active session.
 * `/earlyaccess` & `/release`: Allows law enforcement and session managers to securely reveal the hidden session code on public notifications.
 
 ### Staff & HR Commands
-* `/loa_request`: Submits a Leave of Absence request requiring start/end dates and a reason[cite: 3].
-* `/loa_approve` & `/loa_reject`: Allows HR to review pending LOA requests via dropdowns and automatically notifies the requester[cite: 3].
-* `/say`: Sends a message as the bot in a designated channel[cite: 3].
-* `/supervise_start` & `/supervise_end`: Manages private staff training sessions[cite: 3].
+* `/loa_request`: Submits a Leave of Absence request requiring start/end dates and a reason.
+* `/loa_approve` & `/loa_reject`: Allows HR to review pending LOA requests via dropdowns and automatically notifies the requester.
+* `/say`: Sends a message as the bot in a designated channel.
+* `/supervise_start` & `/supervise_end`: Manages private staff training sessions.
 
 ### Moderation & Admin Commands
 * `/infract`: Issues a strike to a user. Staff members climb a separate "Staff Strike" role ladder than regular members.
@@ -33,13 +33,13 @@ To get Lily up and running on your server, please refer to the official **[Setup
 * `/terminate`: Instantly strips all staff-related roles from a target member (enforces Discord role hierarchy to prevent abuse).
 * `/blacklist add`: Strips a user of all roles, assigns a restricted channel role, and starts a randomized 1-3 hour ban countdown.
 * `/blacklist remove`: Cancels an active ban countdown and restores all original roles to the user.
-* `/all_vehicles`: Admin-only command to view the entire server's vehicle registry[cite: 3].
+* `/all_vehicles`: Admin-only command to view the entire server's vehicle registry.
 
 ### Data Storage & Formats
 The bot uses local JSON files for persistent storage.
 
-**`vehicles.json`**[cite: 3]
-Stores user vehicle registries tied to their Discord ID[cite: 3].
+**`vehicles.json`**
+Stores user vehicle registries tied to their Discord ID.
 ```json
 {
   "user_id": {
@@ -60,8 +60,8 @@ Stores user vehicle registries tied to their Discord ID[cite: 3].
 }
 ```
 
-**`loa_requests.json`**[cite: 3]
-Tracks pending and resolved staff leave requests[cite: 3].
+**`loa_requests.json`**
+Tracks pending and resolved staff leave requests.
 ```json
 {
   "a1b2c3d4": {
