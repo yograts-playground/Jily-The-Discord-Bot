@@ -1,6 +1,9 @@
 ### Overview
 Lily (Version 0.1) is a comprehensive Discord roleplay session and moderation bot. It handles vehicle registration, session notifications, law enforcement citations, staff leave of absences (LOA), and strict server moderation tools like role-stripping and delayed blacklisting.
 
+### Setup & Installation
+To get Lily up and running on your server, please refer to the official **[Setup Guide](https://github.com/yograts-playground/Jily-The-Discord-Bot/blob/Lily/SETUP_GUIDE.md)**.
+
 ### User & Roleplay Commands
 * `/version`: Displays the current bot software version (Lily v0.1) and developer credits.
 * `/register_vehicle`: Registers a new vehicle requiring year, model, trim, color, plate, state, and owner[cite: 3].
@@ -85,5 +88,3 @@ Tracks active ban countdowns and saves user roles for restoration.
     "ban_timestamp": 1718478000.0,
     "guild_id": 987654321098765432,
     "saved_roles": [111111111, 222222222]
-  }
-}
