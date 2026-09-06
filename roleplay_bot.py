@@ -108,6 +108,9 @@ LOA_ELIGIBLE_ROLES = [
     1546050107953250314,
 ]
 
+# Replace with the ID of a role that has 'View Channels' explicitly denied in your server
+BLACKLISTED_ROLE_ID = 1546154617451057243 
+
 def is_staff_member(member: discord.Member) -> bool:
     """Whether the given member is Staff for /infract purposes: an
     Administrator, the Session Manager role, or a Law Enforcement role.
@@ -142,6 +145,38 @@ ACTIVE_SESSIONS_FILE = "active_sessions.json"
 SUPERVISE_SESSIONS_FILE = "supervise_sessions.json"
 # LOA (Leave of Absence) request storage file, keyed by request ID
 LOA_REQUESTS_FILE = "loa_requests.json"
+# Blacklist storage file - tracks users who have been blacklisted and are pending ban
+BLACKLIST_FILE = "blacklist.json"
+
+def load_blacklist():
+    if os.path.exists(BLACKLIST_FILE):
+        with open(BLACKLIST_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_blacklist(data):
+    with open(BLACKLIST_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+async def execute_delayed_ban(guild: discord.Guild, user_id: int, delay_seconds: int):
+    """Wait for the delay, then ban the user if they are still on the blacklist."""
+    await asyncio.sleep(delay_seconds)
+    
+    blacklist = load_blacklist()
+    user_id_str = str(user_id)
+    
+    if user_id_str in blacklist:
+        try:
+            member = guild.get_member(user_id) or await guild.fetch_member(user_id)
+            await member.ban(reason="Failed to appeal/removed from blacklist in time.")
+        except discord.NotFound:
+            await guild.ban(discord.Object(id=user_id), reason="Failed to appeal/removed from blacklist in time.")
+        except discord.Forbidden:
+            print(f"Missing permissions to ban {user_id}")
+            return
+            
+        blacklist.pop(user_id_str, None)
+        save_blacklist(blacklist)
 
 def load_vehicles():
     """Load vehicle data from JSON file"""
@@ -371,9 +406,113 @@ def validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, 
     
     return errors
 
+# Initialize the command group
+blacklist_group = app_commands.Group(name="blacklist", description="Manage the server blacklist")
+bot.tree.add_command(blacklist_group)
+
+@blacklist_group.command(name="add", description="Add a user to the blacklist and schedule them for a ban in 1-3 hours")
+@require_loa_eligible()
+async def blacklist_add(interaction: discord.Interaction, target: discord.Member, reason: str):
+    if interaction.user.id != interaction.guild.owner_id:
+        if interaction.user.top_role.position <= target.top_role.position:
+            await interaction.response.send_message("❌ You cannot blacklist a member equal to or higher than you!", ephemeral=True)
+            return
+
+    blacklist = load_blacklist()
+    user_id_str = str(target.id)
+
+    if user_id_str in blacklist:
+        await interaction.response.send_message("❌ This user is already on the blacklist.", ephemeral=True)
+        return
+
+    await interaction.response.defer()
+
+    saved_role_ids = [role.id for role in target.roles if role.id != interaction.guild.id]
+    blacklisted_role = interaction.guild.get_role(BLACKLISTED_ROLE_ID)
+
+    try:
+        if blacklisted_role:
+            await target.edit(roles=[blacklisted_role], reason=f"Blacklisted by {interaction.user.name}")
+        else:
+            await interaction.followup.send("⚠️ `BLACKLISTED_ROLE_ID` is invalid. Please configure it. (Ban timer still started).")
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I lack the 'Manage Roles' permission to modify this user.")
+        return
+
+    delay_seconds = random.randint(3600, 10800)
+    ban_timestamp = datetime.now().timestamp() + delay_seconds
+
+    blacklist[user_id_str] = {
+        "username": target.name,
+        "blacklisted_by": interaction.user.name,
+        "reason": reason,
+        "ban_timestamp": ban_timestamp,
+        "guild_id": interaction.guild.id,
+        "saved_roles": saved_role_ids
+    }
+    save_blacklist(blacklist)
+
+    asyncio.create_task(execute_delayed_ban(interaction.guild, target.id, delay_seconds))
+
+    hours = round(delay_seconds / 3600, 1)
+    embed = discord.Embed(
+        title="⛔ User Blacklisted",
+        description=f"{target.mention} has been added to the blacklist and locked out of channels.\nThey will be **permanently banned in {hours} hours** unless removed.",
+        color=discord.Color.dark_red(),
+        timestamp=datetime.now()
+    )
+    embed.add_field(name="Reason", value=reason, inline=False)
+    embed.set_footer(text=f"Blacklisted by {interaction.user.name}")
+
+    await interaction.followup.send(embed=embed)
+
+
+@blacklist_group.command(name="remove", description="Remove a user from the blacklist and restore their roles")
+@require_loa_eligible()
+async def blacklist_remove(interaction: discord.Interaction, target: discord.Member):
+    blacklist = load_blacklist()
+    user_id_str = str(target.id)
+
+    if user_id_str not in blacklist:
+        await interaction.response.send_message("❌ This user is not on the blacklist.", ephemeral=True)
+        return
+
+    await interaction.response.defer()
+
+    data = blacklist.pop(user_id_str)
+    save_blacklist(blacklist)
+
+    roles_to_restore = []
+    for role_id in data.get("saved_roles", []):
+        role = interaction.guild.get_role(role_id)
+        if role:
+            roles_to_restore.append(role)
+
+    try:
+        await target.edit(roles=roles_to_restore, reason=f"Removed from blacklist by {interaction.user.name}")
+        await interaction.followup.send(f"✅ {target.mention} was removed from the blacklist. Roles restored.")
+    except discord.Forbidden:
+        await interaction.followup.send(f"✅ {target.mention} was removed from the blacklist, but I lacked permission to restore their roles.")
+
 @bot.event
 async def on_ready():
     """Bot startup event"""
+    # Load the blacklist and schedule any pending bans
+    blacklist = load_blacklist()
+    current_time = datetime.now().timestamp()
+    
+    for user_id_str, data in list(blacklist.items()):
+        ban_time = data.get("ban_timestamp")
+        guild_id = data.get("guild_id")
+        
+        if ban_time and guild_id:
+            guild = bot.get_guild(guild_id)
+            if guild:
+                remaining = ban_time - current_time
+                if remaining <= 0:
+                    asyncio.create_task(execute_delayed_ban(guild, int(user_id_str), 0))
+                else:
+                    asyncio.create_task(execute_delayed_ban(guild, int(user_id_str), remaining))
     print(f'{bot.user} has connected to Discord!')
     try:
         synced = await bot.tree.sync()
@@ -2639,7 +2778,7 @@ async def terminate(
     confirm_embed.set_footer(text=f"Terminated by {interaction.user.name}")
 
     await interaction.followup.send(embed=confirm_embed)
-    
+
 @bot.event
 async def on_command_error(ctx, error):
     """Error handling for prefix commands"""
