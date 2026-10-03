@@ -21,16 +21,16 @@ LAW_ENFORCEMENT_ROLES = [1469606955843850270]
 SESSION_MANAGER_ROLE_ID = 1469610749256011914
 
 # Role (in addition to Law Enforcement) allowed to run /earlyaccess
-EARLY_ACCESS_ROLE_ID = 1546055063359852596
+EARLY_ACCESS_ROLE_ID = 1555800074385104976
 
 # Role allowed to run /supervise_start and /supervise_end, in addition to
 # Administrators - see is_supervise_manager
-STAFF_TRAINER_ROLE_ID = 1546050155646816286
+STAFF_TRAINER_ROLE_ID = 1555800839963287613
 
 # Role (in addition to Staff Trainer and Administrators) allowed to reveal a
 # supervised session's code via the button on its notification - see
 # has_supervise_code_access
-STAFF_IN_TRAINING_ROLE_ID = 1543163870049476659
+STAFF_IN_TRAINING_ROLE_ID = 1555800733826424913
 
 # The 3 roles allowed to run /earlyaccess (Administrators can also run it -
 # see has_earlyaccess_access)
@@ -40,76 +40,44 @@ EARLY_ACCESS_COMMAND_ROLES = LAW_ENFORCEMENT_ROLES + [EARLY_ACCESS_ROLE_ID]
 # infraction, index 1 on their 2nd, etc. Reaching a 5th infraction (i.e. past
 # the end of this list) grants no role - it's the kick/ban threshold instead.
 INFRACTION_ROLES = [
-    1546082959986004079,  # Infraction 1
-    1546083021504126998,  # Infraction 2
-    1546083037438152845,  # Infraction 3
-    1546083029812908122,  # Infraction 4
+    1513754581983563867,  # Infraction 1
+    1555800939259109472,  # Infraction 2
+    1555801022239215676,  # Infraction 3
+    1555803714252574740,  # Infraction 4
 ]
 
 # /infract role ladder used instead of INFRACTION_ROLES when the person being
 # infracted is Staff (Admin, Session Manager, or Law Enforcement).
 STAFF_STRIKE_ROLES = [
-    1546083207076642947,  # Staff Strike 1
-    1546083365378064385,  # Staff Strike 2
-    1546083345463513149,  # Staff Strike 3
-    1546083357199441930,  # Staff Strike 4
+    1555801109958758481,  # Staff Strike 1
+    1555801217459032164,  # Staff Strike 2
+    1555801381246472192,  # Staff Strike 3
+    1555801538579140659,  # Staff Strike 4
 ]
 
 # HR role - the only role (besides Administrators) allowed to run
 # /loa_approve and /loa_reject
-HR_ROLE_ID = 1546124112340983848
+HR_ROLE_ID = 1545320718617813062
 
 # Role (besides Administrators) allowed to run /say
-SAY_ROLE_ID = 1510876852112195694
+SAY_ROLE_ID = 1545320718617813062
 
 # Roles allowed to submit /loa_request (Administrators can also run it - see
 # is_loa_eligible). This is the full list of Staff roles eligible for LOA.
 LOA_ELIGIBLE_ROLES = [
-    1510876852112195694,
-    1523180647722516660,
-    1510651270816338070,
-    1510651809633665244,
-    1546124112340983848,  # HR
-    1523222450479960104,
-    1543174482229989438,
-    1529036514950905987,
-    1529036512036130967,
-    1529036517476007987,
-    1523222456968413325,
-    1529036625462693898,
-    1529036625990914108,
-    1543177268971438101,
-    1543177270628454523,
-    1543177260377440276,
-    1543177271584497737,
-    1543177283261431818,
-    1523188202385571892,
-    1543187103435718746,
-    1543164964590592020,
-    1543164756431478864,
-    1543164851868799017,
-    1546050155646816286,
-    1543164642593996800,
-    1543164323806060574,
-    1543164217010556969,
-    1543164132088352792,
-    1543164492165288008,
-    1543163870049476659,
-    1469610749256011914,
+    1469606611860324362,
+    1545320718617813062,
+    1469606718744035433,
     1469606955843850270,
-    1510652955353944074,
-    1510653170198511728,
-    1523177785609425026,
-    1510875615446827048,
-    1510875561877049384,
-    1510875492763566160,
-    1510876143639597136,
-    1510876727893819553,
-    1546050107953250314,
+    1469607903601229896,
+    1469608002708312208,
+    1469610749256011914,
+    1555800733826424913,
+    1555800839963287613,
 ]
 
 # Replace with the ID of a role that has 'View Channels' explicitly denied in your server
-BLACKLISTED_ROLE_ID = 1546154617451057243 
+BLACKLISTED_ROLE_ID = 1555801892817342525 
 
 def is_staff_member(member: discord.Member) -> bool:
     """Whether the given member is Staff for /infract purposes: an
@@ -645,8 +613,8 @@ async def remove_vehicle(interaction: discord.Interaction, vehicle_number: int):
     await interaction.followup.send(embed=embed)
 
 SESSION_CHANNELS = {
-    "1510658237807198250": "Session 1",
-    "1523170349452099664": "Session 2"
+    "1469470776003395594": "Session 1",
+    "1555802833356333157": "Session 2"
 }
 
 # Channel(s) where /supervise_start posts its notification. These should be
@@ -654,14 +622,14 @@ SESSION_CHANNELS = {
 # + Staff In Training (+ Admins) - the bot's access checks control who can
 # click "Reveal Code", but real privacy also depends on who can see the
 # channel(s) at all.
-SUPERVISE_SESSION_CHANNEL_IDS = [1527529181364097224]  # add more IDs to this list as needed
+SUPERVISE_SESSION_CHANNEL_IDS = [1472083501909151754]  # add more IDs to this list as needed
 
 # Channel that a supervised session's code gets fully released to once the
 # person who started it presses "Reveal Session Code" and fills in the
 # AORP/FRP Speed Limit form. This is the same "Session 1" channel used by
 # /start_session - the resulting notification looks like a normal session
 # post, except the code is shown right away (no early access step).
-SUPERVISED_RELEASE_CHANNEL_ID = 1510658237807198250
+SUPERVISED_RELEASE_CHANNEL_ID = 1469470776003395594
 
 
 class SessionDetailsModal(discord.ui.Modal, title="Start Roleplay Session"):
