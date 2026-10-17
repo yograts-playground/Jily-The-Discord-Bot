@@ -1926,6 +1926,73 @@ async def all_vehicles(interaction: discord.Interaction):
     embed.set_footer(text=f"Total vehicles: {total_vehicles}")
     await interaction.followup.send(embed=embed)
 
+@bot.tree.command(name="check_plate", description="Look up a license plate and its owner's active citations")
+@require_staff_member()
+async def check_plate(interaction: discord.Interaction, plate: str):
+    """Search for a vehicle by plate and pull the owner's active citations"""
+    await interaction.response.defer()
+
+    vehicles = load_vehicles()
+    citations = load_citations()
+
+    found_vehicle = None
+    owner_id = None
+
+    # Search for the plate across all registered vehicles
+    for u_id, user_data in vehicles.items():
+        for v in user_data.get("vehicles", []):
+            if v.get("plate", "").upper() == plate.upper():
+                found_vehicle = v
+                owner_id = u_id
+                break
+        if found_vehicle:
+            break
+
+    if not found_vehicle:
+        await interaction.followup.send(f"❌ No vehicle found with plate `{plate.upper()}`.")
+        return
+
+    # Fetch active (unpaid) citations for the owner
+    active_citations = []
+    if owner_id in citations:
+        active_citations = [c for c in citations[owner_id] if not c.get("paid", False)]
+
+    # Build the lookup embed
+    embed = discord.Embed(
+        title=f"🔍 Plate Lookup: {found_vehicle['plate'].upper()}",
+        timestamp=datetime.now()
+    )
+
+    # Vehicle Information Field
+    veh_info = (
+        f"**Year:** {found_vehicle['year']}\n"
+        f"**Brand/Model:** {found_vehicle['brand']} {found_vehicle['model']} {found_vehicle['trim']}\n"
+        f"**Color:** {found_vehicle['color']}\n"
+        f"**State:** {found_vehicle['state']}\n"
+        f"**Registered Owner:** {found_vehicle['owner']} (<@{owner_id}>)"
+    )
+    embed.add_field(name="🚗 Vehicle Details", value=veh_info, inline=False)
+
+    # Active Citations Field
+    if active_citations:
+        embed.color = discord.Color.red() # Red alerts LEOs to active warrants/fines
+        total_fines = sum(c['fine_amount'] for c in active_citations)
+        cit_text = f"**Active Citations:** {len(active_citations)}\n**Total Owed:** ${total_fines}\n\n"
+        
+        # List up to 5 most recent active citations
+        for c in active_citations[-5:]:
+            cit_text += f"• `{c['citation_id']}`: {c['reason']} - **${c['fine_amount']}**\n"
+        if len(active_citations) > 5:
+            cit_text += f"*...and {len(active_citations) - 5} more*"
+
+        embed.add_field(name="🚨 Active Citations", value=cit_text, inline=False)
+    else:
+        embed.color = discord.Color.green() # Green implies clean record
+        embed.add_field(name="🚨 Active Citations", value="✅ Clean Record. No outstanding citations.", inline=False)
+
+    embed.set_footer(text=f"Requested by {interaction.user.name}")
+    await interaction.followup.send(embed=embed)
+
 @bot.tree.command(name="issue_citation", description="Issue a citation/ticket to a user (Law Enforcement only)")
 async def issue_citation(
     interaction: discord.Interaction,
