@@ -370,7 +370,7 @@ def require_say_access():
     return app_commands.check(predicate)
 
 
-def validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, all_vehicles=None):
+def validate_vehicle_data(year, brand, model, trim, color, plate, state, all_vehicles=None):
     """Validate vehicle registration data"""
     errors = []
     
@@ -399,8 +399,6 @@ def validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, 
         errors.append("Vehicle color cannot be empty")
     if not state or len(state.strip()) == 0:
         errors.append("Vehicle state cannot be empty")
-    if not owner or len(owner.strip()) == 0:
-        errors.append("Vehicle owner cannot be empty")
     
     # Check for duplicate plate + state combination
     if all_vehicles:
@@ -535,8 +533,7 @@ async def register_vehicle(
     trim: str,
     color: str,
     plate: str,
-    state: str,
-    owner: str
+    state: str
 ):
     """Register a new vehicle"""
     await interaction.response.defer()
@@ -545,12 +542,13 @@ async def register_vehicle(
     vehicles = load_vehicles()
     
     # Validate input (pass all vehicles for duplicate checking)
-    errors = validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, vehicles)
+    errors = validate_vehicle_data(year, brand, model, trim, color, plate, state, vehicles)
     if errors:
         error_msg = "\n".join(f"{error}" for error in errors)
         await interaction.followup.send(f"**Validation Errors:**\n{error_msg}")
         return
     user_id = str(interaction.user.id)
+    owner_name = interaction.user.display_name # Automatically uses their Server Nickname
     
     # Initialize user's vehicle list if needed
     if user_id not in vehicles:
@@ -565,7 +563,7 @@ async def register_vehicle(
         "color": color,
         "plate": plate,
         "state": state,
-        "owner": owner,
+        "owner": owner_name,
         "registered_at": datetime.now().isoformat()
     }
     
@@ -585,7 +583,7 @@ async def register_vehicle(
     embed.add_field(name="Color", value=color, inline=True)
     embed.add_field(name="License Plate", value=plate, inline=True)
     embed.add_field(name="State", value=state, inline=True)
-    embed.add_field(name="Owner", value=owner, inline=False)
+    embed.add_field(name="Owner", value=owner_name, inline=False)
     embed.set_footer(text=f"Registered by {interaction.user.name}")
     
     await interaction.followup.send(embed=embed)
