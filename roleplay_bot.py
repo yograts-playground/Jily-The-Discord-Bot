@@ -36,6 +36,12 @@ STAFF_IN_TRAINING_ROLE_ID = 1555800733826424913
 # see has_earlyaccess_access)
 EARLY_ACCESS_COMMAND_ROLES = LAW_ENFORCEMENT_ROLES + [EARLY_ACCESS_ROLE_ID]
 
+# Optional: channel ID to post a notification in whenever a new LOA request
+# comes in, so HR knows to review it via /loa_approve or /loa_reject. Leave
+# as None to skip posting (HR can still see pending requests via the
+# /loa_approve and /loa_reject dropdowns at any time).
+LOA_NOTIFICATION_CHANNEL_ID = 1556288515019640872
+
 # /infract role ladder for regular members - index 0 is given on their 1st
 # infraction, index 1 on their 2nd, etc. Reaching a 5th infraction (i.e. past
 # the end of this list) grants no role - it's the kick/ban threshold instead.
@@ -2319,12 +2325,6 @@ async def mark_citation_paid(
 # Expected format for the date/time fields on the /loa_request form
 LOA_DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 LOA_DATETIME_EXAMPLE = "2025-06-15 18:00"
-
-# Optional: channel ID to post a notification in whenever a new LOA request
-# comes in, so HR knows to review it via /loa_approve or /loa_reject. Leave
-# as None to skip posting (HR can still see pending requests via the
-# /loa_approve and /loa_reject dropdowns at any time).
-LOA_NOTIFICATION_CHANNEL_ID = None
 
 
 def parse_loa_datetime(value: str) -> datetime:
