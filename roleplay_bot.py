@@ -117,6 +117,12 @@ LOA_ELIGIBLE_ROLES = [
 # Replace with the ID of a role that has 'View Channels' explicitly denied in your server
 BLACKLISTED_ROLE_ID = 1546154617451057243 
 
+def require_staff_member():
+    """App command check that gates a command to Staff, Admins, or Law Enforcement"""
+    async def predicate(interaction: discord.Interaction) -> bool:
+        return is_staff_member(interaction)
+    return app_commands.check(predicate)
+
 def is_staff_member(member: discord.Member) -> bool:
     """Whether the given member is Staff for /infract purposes: an
     Administrator, the Session Manager role, or a Law Enforcement role.
