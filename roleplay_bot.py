@@ -2775,7 +2775,7 @@ async def version(interaction: discord.Interaction):
     """Display the bot's software version, codename, and developer"""
     embed = discord.Embed(
         title="Software Version",
-        description="**Software:** Lily\n**Version:** 0.1\n**Codename:** Lily\n**Developer:** <@904243741106245704>",
+        description="**Software:** Lily\n**Version:** 0.3\n**Codename:** Lily\n**Developer:** <@904243741106245704>",
         color=discord.Color.blurple(),
         timestamp=datetime.now()
     )
