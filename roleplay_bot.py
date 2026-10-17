@@ -36,6 +36,12 @@ STAFF_IN_TRAINING_ROLE_ID = 1543163870049476659
 # see has_earlyaccess_access)
 EARLY_ACCESS_COMMAND_ROLES = LAW_ENFORCEMENT_ROLES + [EARLY_ACCESS_ROLE_ID]
 
+# Optional: channel ID to post a notification in whenever a new LOA request
+# comes in, so HR knows to review it via /loa_approve or /loa_reject. Leave
+# as None to skip posting (HR can still see pending requests via the
+# /loa_approve and /loa_reject dropdowns at any time).
+LOA_NOTIFICATION_CHANNEL_ID = 1556288395653816350
+
 # /infract role ladder for regular members - index 0 is given on their 1st
 # infraction, index 1 on their 2nd, etc. Reaching a 5th infraction (i.e. past
 # the end of this list) grants no role - it's the kick/ban threshold instead.
@@ -110,6 +116,13 @@ LOA_ELIGIBLE_ROLES = [
 
 # Replace with the ID of a role that has 'View Channels' explicitly denied in your server
 BLACKLISTED_ROLE_ID = 1546154617451057243 
+
+def require_staff_member():
+    """App command check that gates a command to Staff, Admins, or Law Enforcement"""
+    async def predicate(interaction: discord.Interaction) -> bool:
+        # Pass interaction.user instead of interaction
+        return is_staff_member(interaction.user)
+    return app_commands.check(predicate)
 
 def is_staff_member(member: discord.Member) -> bool:
     """Whether the given member is Staff for /infract purposes: an
@@ -364,7 +377,7 @@ def require_say_access():
     return app_commands.check(predicate)
 
 
-def validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, all_vehicles=None):
+def validate_vehicle_data(year, brand, model, trim, color, plate, state, all_vehicles=None):
     """Validate vehicle registration data"""
     errors = []
     
@@ -393,8 +406,6 @@ def validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, 
         errors.append("Vehicle color cannot be empty")
     if not state or len(state.strip()) == 0:
         errors.append("Vehicle state cannot be empty")
-    if not owner or len(owner.strip()) == 0:
-        errors.append("Vehicle owner cannot be empty")
     
     # Check for duplicate plate + state combination
     if all_vehicles:
@@ -529,8 +540,7 @@ async def register_vehicle(
     trim: str,
     color: str,
     plate: str,
-    state: str,
-    owner: str
+    state: str
 ):
     """Register a new vehicle"""
     await interaction.response.defer()
@@ -539,12 +549,13 @@ async def register_vehicle(
     vehicles = load_vehicles()
     
     # Validate input (pass all vehicles for duplicate checking)
-    errors = validate_vehicle_data(year, brand, model, trim, color, plate, state, owner, vehicles)
+    errors = validate_vehicle_data(year, brand, model, trim, color, plate, state, vehicles)
     if errors:
         error_msg = "\n".join(f"{error}" for error in errors)
         await interaction.followup.send(f"**Validation Errors:**\n{error_msg}")
         return
     user_id = str(interaction.user.id)
+    owner_name = interaction.user.display_name # Automatically uses their Server Nickname
     
     # Initialize user's vehicle list if needed
     if user_id not in vehicles:
@@ -559,7 +570,7 @@ async def register_vehicle(
         "color": color,
         "plate": plate,
         "state": state,
-        "owner": owner,
+        "owner": owner_name,
         "registered_at": datetime.now().isoformat()
     }
     
@@ -579,7 +590,7 @@ async def register_vehicle(
     embed.add_field(name="Color", value=color, inline=True)
     embed.add_field(name="License Plate", value=plate, inline=True)
     embed.add_field(name="State", value=state, inline=True)
-    embed.add_field(name="Owner", value=owner, inline=False)
+    embed.add_field(name="Owner", value=owner_name, inline=False)
     embed.set_footer(text=f"Registered by {interaction.user.name}")
     
     await interaction.followup.send(embed=embed)
@@ -1949,6 +1960,73 @@ async def all_vehicles(interaction: discord.Interaction):
     embed.set_footer(text=f"Total vehicles: {total_vehicles}")
     await interaction.followup.send(embed=embed)
 
+@bot.tree.command(name="check_plate", description="Look up a license plate and its owner's active citations")
+@require_staff_member()
+async def check_plate(interaction: discord.Interaction, plate: str):
+    """Search for a vehicle by plate and pull the owner's active citations"""
+    await interaction.response.defer()
+
+    vehicles = load_vehicles()
+    citations = load_citations()
+
+    found_vehicle = None
+    owner_id = None
+
+    # Search for the plate across all registered vehicles
+    for u_id, user_data in vehicles.items():
+        for v in user_data.get("vehicles", []):
+            if v.get("plate", "").upper() == plate.upper():
+                found_vehicle = v
+                owner_id = u_id
+                break
+        if found_vehicle:
+            break
+
+    if not found_vehicle:
+        await interaction.followup.send(f"❌ No vehicle found with plate `{plate.upper()}`.")
+        return
+
+    # Fetch active (unpaid) citations for the owner
+    active_citations = []
+    if owner_id in citations:
+        active_citations = [c for c in citations[owner_id] if not c.get("paid", False)]
+
+    # Build the lookup embed
+    embed = discord.Embed(
+        title=f"🔍 Plate Lookup: {found_vehicle['plate'].upper()}",
+        timestamp=datetime.now()
+    )
+
+    # Vehicle Information Field
+    veh_info = (
+        f"**Year:** {found_vehicle['year']}\n"
+        f"**Brand/Model:** {found_vehicle['brand']} {found_vehicle['model']} {found_vehicle['trim']}\n"
+        f"**Color:** {found_vehicle['color']}\n"
+        f"**State:** {found_vehicle['state']}\n"
+        f"**Registered Owner:** {found_vehicle['owner']} (<@{owner_id}>)"
+    )
+    embed.add_field(name="🚗 Vehicle Details", value=veh_info, inline=False)
+
+    # Active Citations Field
+    if active_citations:
+        embed.color = discord.Color.red() # Red alerts LEOs to active warrants/fines
+        total_fines = sum(c['fine_amount'] for c in active_citations)
+        cit_text = f"**Active Citations:** {len(active_citations)}\n**Total Owed:** ${total_fines}\n\n"
+        
+        # List up to 5 most recent active citations
+        for c in active_citations[-5:]:
+            cit_text += f"• `{c['citation_id']}`: {c['reason']} - **${c['fine_amount']}**\n"
+        if len(active_citations) > 5:
+            cit_text += f"*...and {len(active_citations) - 5} more*"
+
+        embed.add_field(name="🚨 Active Citations", value=cit_text, inline=False)
+    else:
+        embed.color = discord.Color.green() # Green implies clean record
+        embed.add_field(name="🚨 Active Citations", value="✅ Clean Record. No outstanding citations.", inline=False)
+
+    embed.set_footer(text=f"Requested by {interaction.user.name}")
+    await interaction.followup.send(embed=embed)
+
 @bot.tree.command(name="issue_citation", description="Issue a citation/ticket to a user (Law Enforcement only)")
 async def issue_citation(
     interaction: discord.Interaction,
@@ -2353,12 +2431,6 @@ async def mark_citation_paid(
 LOA_DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 LOA_DATETIME_EXAMPLE = "2025-06-15 18:00"
 
-# Optional: channel ID to post a notification in whenever a new LOA request
-# comes in, so HR knows to review it via /loa_approve or /loa_reject. Leave
-# as None to skip posting (HR can still see pending requests via the
-# /loa_approve and /loa_reject dropdowns at any time).
-LOA_NOTIFICATION_CHANNEL_ID = None
-
 
 def parse_loa_datetime(value: str) -> datetime:
     """Parse a LOA form date/time field. Raises ValueError (with a
@@ -2703,7 +2775,7 @@ async def version(interaction: discord.Interaction):
     """Display the bot's software version, codename, and developer"""
     embed = discord.Embed(
         title="Software Version",
-        description="**Software:** Lily\n**Version:** 0.1\n**Codename:** Lily\n**Developer:** <@904243741106245704>",
+        description="**Software:** Lily\n**Version:** 0.3\n**Codename:** Lily\n**Developer:** <@904243741106245704>",
         color=discord.Color.blurple(),
         timestamp=datetime.now()
     )
